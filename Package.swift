@@ -1,13 +1,17 @@
 import PackageDescription
 
 let package = Package(
-    name: "Swiftpy",
+    name: "PySwift",
     targets: [
         Target(
-            name: "Swiftpy"),
+            name: "PySwift_None",
+            dependencies:[]),
         Target(
-            name: "SwiftpyDemo",
-            dependencies: [.Target(name: "Swiftpy")])
+            name: "PySwift",
+            dependencies:["PySwift_None"]),
+        Target(
+            name: "PySwift_Demo",
+            dependencies: [.Target(name: "PySwift")])
     ],
     dependencies: []
 )
