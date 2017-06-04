@@ -105,6 +105,24 @@ let sayHelloFn = "def sayHello(name, surname = \"\", times = 1):\n" +
 "        print(\"Hello, \" + name + \" \" + surname + \"!\")"
 evalStatement(sayHelloFn) //load the code in the interpreter
 
-let keywordArgs : Dictionary<String, PythonBridge> = ["times" : 3.bridgeToPython(), "surname" : "Bond".bridgeToPython()]
-let positionalArgs = ["James".bridgeToPython()]
+var keywordArgs : Dictionary<String, PythonBridge> = ["times" : 3.bridgeToPython(), "surname" : "Bond".bridgeToPython()]
+var positionalArgs = ["James".bridgeToPython()]
 call("sayHello", positionalArgs: positionalArgs, keywordArgs: keywordArgs)
+
+////////////////////////////////////
+////////////////////////////////////
+
+print("\nWhoops, getting longer than expected : a variadic Python function with named arguments")
+
+let astonishingFunction = "from __future__ import print_function\n" +
+"def astonishingFunction(*args, **kwargs):\n" +
+"    for a in args:\n" +
+"        print(a, end = ' ')\n" +
+"    print(\"\\n\")\n" +
+"    for k,v in kwargs.iteritems():\n" +
+"        print(\"%s = %s\" % (k, v))"
+evalStatement(astonishingFunction) //load the code in the interpreter
+
+keywordArgs = ["First Key" : 17.18.bridgeToPython(), "Second Key" : "Second value".bridgeToPython(), "Third Key" : "3rd value".bridgeToPython()]
+positionalArgs = ["This", "function", "is", "variadic :", "it", "may", "take", "as", "many", "arguments", "as", "wanted."].map { __bridgeToPython($0) }
+call("astonishingFunction", positionalArgs: positionalArgs, keywordArgs: keywordArgs)

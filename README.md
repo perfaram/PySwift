@@ -23,7 +23,7 @@ run demo
 
 - Run Python code from string,
 - Load Python module,
-- Call function on Python objects with positional and named arguments (no varargs yet),
+- Call function on Python objects with positional and named arguments,
 - Convert String, Int, Float, Array/List between Swift & Python,
 - Getting/setting attributes from object.
 
