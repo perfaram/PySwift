@@ -2,39 +2,37 @@
 
 ## Requirements
 
-- OSX 10.11.4
-- Swift toolchain swift-DEVELOPMENT-SNAPSHOT-2016-05-31-a-osx
+- OSX 10.12 (may work on a lower version, though this is untested)
+- Swift version 3.1, swiftlang-802.0.53 (may work on a lower version, though this is untested)
 - Python 2.7 (system Python)
 
 ## Building
 
 ```bash
 git checkout develop
-./build.sh
+swift build
 ```
 
 run demo
 
 ```bash
-./build.sh
-.build/debug/SwiftpyDemo
+.build/debug/PySwift_Demo
 ```
 
 ## Features
 
-- run python code from string
-- load python module
-- call function on python objects with normal args(no kargs)
-- convert String between Swift & Python
-- getting/setting attr from object
+- Run Python code from string,
+- Load Python module,
+- Call function on Python objects with normal args (no **kargs, no named args yet),
+- Convert String, Int, Float, Array/List between Swift & Python,
+- Getting/setting attributes from object.
 
 ## Usage
 
-see [Demo](src/SwiftpyDemo/main.swift)
+see [Demo](src/PySwift_Demo/main.swift)
 
 ## Todos
 
-- run python code from file
-- automagic conversion between Swift & Python
-- call function with keyword args
-- test system
+- Support more types for « toll-free » bridging of objects between Swift and Python,
+- Automagic creation of Python wrappers for Swift objects,
+- Call function with named args.
