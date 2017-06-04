@@ -23,7 +23,7 @@ run demo
 
 - Run Python code from string,
 - Load Python module,
-- Call function on Python objects with normal args (no **kargs, no named args yet),
+- Call function on Python objects with positional and named arguments (no varargs yet),
 - Convert String, Int, Float, Array/List between Swift & Python,
 - Getting/setting attributes from object.
 
@@ -34,5 +34,4 @@ see [Demo](src/PySwift_Demo/main.swift)
 ## Todos
 
 - Support more types for « toll-free » bridging of objects between Swift and Python,
-- Automagic creation of Python wrappers for Swift objects,
-- Call function with named args.
+- Automagic creation of Python wrappers for Swift objects.
