@@ -18,7 +18,6 @@ public func importModule(named name: String) -> Bool {
     let maindict = PyModule_GetDict(main.pythonObjPtr)
     
     let module = pythonImport(name: name)
-    let moduledict = PyModule_GetDict(module.pythonObjPtr)
     
     guard PyDict_SetItemString(maindict, name, module.pythonObjPtr) == 0 else { return false }
     return true
@@ -28,9 +27,14 @@ public func evalStatement(_ string: String) {
     PyRun_SimpleStringFlags(string, nil);
 }
 
-public func call(_ code: String, args:PythonBridge...) -> PythonObject {
+@discardableResult public func call(_ code: String, args:PythonBridge...) -> PythonObject {
     let main = pythonImport(name: "__main__")
     return main.call(code, args: args)
+}
+
+@discardableResult public func call(_ funcName: String, positionalArgs: [PythonBridge], keywordArgs: Dictionary<String, PythonBridge>) -> PythonObject {
+    let main = pythonImport(name: "__main__")
+    return main.call(funcName, positionalArgs: positionalArgs, keywordArgs: keywordArgs)
 }
 
 internal func wrapEvalString( string : String) -> String {
@@ -55,8 +59,10 @@ public protocol PythonBridge : CustomStringConvertible {
     var pythonObjPtr: PythonObjectPointer? { get }
     var description:String { get }
     //TODO test the case of method with self
+    @discardableResult func call(_ funcName: String, positionalArgs: [PythonBridge], keywordArgs: Dictionary<String, PythonBridge>) -> PythonObject
     @discardableResult func call(_ funcName:String, args:PythonBridge...) -> PythonObject
     @discardableResult func call(_ funcName:String, args:[PythonBridge]) -> PythonObject
+    
     func toPythonString() -> PythonString
     func attr(_ name:String) -> PythonObject
     func setAttr(_ name:String, value:PythonBridge)
@@ -68,11 +74,11 @@ public func ==(lhs: PythonBridge, rhs: PythonBridge) -> Bool {
 }
 
 extension PythonBridge {
-    @discardableResult public func call(_ funcName:String, args:PythonBridge...) -> PythonObject{
+    @discardableResult public func call(_ funcName: String, args: PythonBridge...) -> PythonObject {
         return call(funcName, args:args)
     }
     
-    @discardableResult public func call(_ funcName:String, args:[PythonBridge]) -> PythonObject {
+    @discardableResult public func call(_ funcName: String, args: [PythonBridge]) -> PythonObject {
         let pFunc = PyObject_GetAttrString(pythonObjPtr!, funcName) //PyDict_GetItemString(module_dict, "functionName")
         guard PyCallable_Check(pFunc) == 1 else { return PythonObject() }
         let pArgs = PyTuple_New(args.count)
@@ -82,6 +88,33 @@ extension PythonBridge {
         }
         let pValue = PyObject_CallObject(pFunc, pArgs)
         Py_DecRef(pArgs)
+        return PythonObject(ptr: pValue)
+    }
+    
+    @discardableResult public func call(_ funcName:String, keywordArgs: Dictionary<String, String>) -> PythonObject {
+        return PythonObject()
+    }
+    
+    @discardableResult public func call(_ funcName: String, positionalArgs: [PythonBridge], keywordArgs: Dictionary<String, PythonBridge>) -> PythonObject {
+        let pFunc = PyObject_GetAttrString(pythonObjPtr!, funcName)
+        guard PyCallable_Check(pFunc) == 1 else { return PythonObject() }
+        
+        let pArgs = PyTuple_New(positionalArgs.count)
+        for (idx, obj) in positionalArgs.enumerated() {
+            let i:Int = idx
+            PyTuple_SetItem(pArgs, i, obj.pythonObjPtr!)
+        }
+        
+        let pKeywords = PyDict_New()
+        for (keyword, obj) in keywordArgs {
+            PyDict_SetItemString(pKeywords, keyword, obj.pythonObjPtr!)
+        }
+        
+        let pValue = PyObject_Call(pFunc, pArgs, pKeywords)
+        Py_DecRef(pArgs)
+        Py_DecRef(pKeywords)
+        Py_DecRef(pFunc)
+        
         return PythonObject(ptr: pValue)
     }
     
@@ -126,6 +159,7 @@ public class PythonObject : PythonBridge, CustomDebugStringConvertible {
     }
     init(ptr: PythonObjectPointer?) {
         self.pythonObjPtr = ptr ?? PyNone_Get()
+        Py_IncRef(pythonObjPtr)
     }
     
     
@@ -134,5 +168,9 @@ public class PythonObject : PythonBridge, CustomDebugStringConvertible {
             guard let ptr = pythonObjPtr else { return "nil" }
             return ptr.debugDescription
         }
+    }
+    
+    deinit {
+        Py_DecRef(pythonObjPtr)
     }
 }

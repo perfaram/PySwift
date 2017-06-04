@@ -91,6 +91,20 @@ print("foo.bar =", bar)
 
 let newBarVal:PythonString = "I'm the new bar"
 print("Setting a new bar to our instance of Foo, from Swift...")
-foo.setAttr("bar", value:newBarVal)
+foo.setAttr("bar", value: newBarVal)
 let newBar = foo.attr("bar")
 print("foo.bar =", newBar)
+
+////////////////////////////////////
+////////////////////////////////////
+
+print("\nOne past last : named arguments")
+
+let sayHelloFn = "def sayHello(name, surname = \"\", times = 1):\n" +
+"    for i in range(times):" +
+"        print(\"Hello, \" + name + \" \" + surname + \"!\")"
+evalStatement(sayHelloFn) //load the code in the interpreter
+
+let keywordArgs : Dictionary<String, PythonBridge> = ["times" : 3.bridgeToPython(), "surname" : "Bond".bridgeToPython()]
+let positionalArgs = ["James".bridgeToPython()]
+call("sayHello", positionalArgs: positionalArgs, keywordArgs: keywordArgs)
