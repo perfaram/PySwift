@@ -1,30 +1,26 @@
 import Python
 import PySwift_None
 
-public class PythonInt : PythonBridge, ExpressibleByIntegerLiteral {
+public class PythonInt : PythonObject, ExpressibleByIntegerLiteral {
     public typealias IntegerLiteralType = Int
     public required init(integerLiteral value: IntegerLiteralType){
-        pythonObjPtr = PyInt_FromLong(value)
+        super.init(ptr: PyInt_FromLong(value))
     }
     
-    init(ptr: PythonObjectPointer?) {
-        self.pythonObjPtr = ptr ?? PyNone_Get()
+    override init(ptr: PythonObjectPointer?) {
+        super.init(ptr: ptr ?? PyNone_Get())
     }
-    
-    public private(set) var pythonObjPtr: PythonObjectPointer?
 }
 
-public class PythonFloat : PythonBridge, ExpressibleByFloatLiteral {
+public class PythonFloat : PythonObject, ExpressibleByFloatLiteral {
     public typealias FloatLiteralType = Double
     public required init(floatLiteral value: FloatLiteralType){
-        pythonObjPtr = PyFloat_FromDouble(value)
+        super.init(ptr: PyFloat_FromDouble(value))
     }
     
-    init(ptr: PythonObjectPointer?) {
-        self.pythonObjPtr = ptr ?? PyNone_Get()
+    override init(ptr: PythonObjectPointer?) {
+        super.init(ptr: ptr ?? PyNone_Get())
     }
-    
-    public private(set) var pythonObjPtr: PythonObjectPointer?
 }
 
 extension Int : PythonBridgeable {

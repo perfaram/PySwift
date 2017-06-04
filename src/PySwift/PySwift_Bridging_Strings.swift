@@ -1,27 +1,29 @@
 import Python
 import PySwift_None
 
-public class PythonString : PythonBridge, ExpressibleByStringLiteral {
+public class PythonString : PythonObject, ExpressibleByStringLiteral {
     
     public typealias ExtendedGraphemeClusterLiteralType = StringLiteralType
     public typealias UnicodeScalarLiteralType = StringLiteralType
     public required init(stringLiteral:String) {
-        pythonObjPtr = PyString_FromString(stringLiteral)
+        super.init(ptr: PyString_FromString(stringLiteral))
     }
     
     public required init(extendedGraphemeClusterLiteral value: ExtendedGraphemeClusterLiteralType) {
-        pythonObjPtr = PyString_FromString(value)
+        super.init(ptr: PyString_FromString(value))
     }
     
     public required init(unicodeScalarLiteral value: UnicodeScalarLiteralType) {
-        pythonObjPtr = PyString_FromString("\(value)")
+        super.init(ptr: PyString_FromString("\(value)"))
     }
     
-    init(ptr: PythonObjectPointer?) {
-        self.pythonObjPtr = ptr ?? PyNone_Get()
+    public init(_ str:String) {
+        super.init(ptr: PyString_FromString(str))
     }
     
-    public private(set) var pythonObjPtr: PythonObjectPointer?
+    override init(ptr: PythonObjectPointer?) {
+        super.init(ptr: ptr ?? PyNone_Get())
+    }
 }
 
 public func __bridgeToPython(_ str: String) -> PythonString {
