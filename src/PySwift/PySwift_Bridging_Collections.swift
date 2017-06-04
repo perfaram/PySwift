@@ -11,21 +11,34 @@ public class PythonList : PythonObject, ExpressibleByArrayLiteral {
         super.init(ptr: PyList_New(elements.count))
         
         for (index, element) in elements.enumerated() {
-            guard let element = element as? PythonBridgeable else { continue }
-            let to_append = element.bridgeToPython()
-            PyList_SetItem(pythonObjPtr, index, to_append.pythonObjPtr)
+            var to_append : PythonObjectPointer
+            
+            if let pointer = (element as? PythonBridgeable)?.bridgeToPython().pythonObjPtr {
+                to_append = pointer
+            }
+            else {
+                to_append = PyNone_Get()
+            }
+            
+            PyList_SetItem(pythonObjPtr, index, to_append)
         }
     }
     
     public required init<C: Collection>(fromCollection collection: C) {
         super.init(ptr: PyList_New(0)) //because getting count on Collections is only guaranteed to be O(*n*)
         var iterator = collection.makeIterator()
-        var idx = 0
+        
         while let element = iterator.next() {
-            guard let element = element as? PythonBridgeable else { continue }
-            let to_append = element.bridgeToPython()
-            PyList_Append(pythonObjPtr, to_append.pythonObjPtr)
-            idx += 1
+            var to_append : PythonObjectPointer
+            
+            if let pointer = (element as? PythonBridgeable)?.bridgeToPython().pythonObjPtr {
+                to_append = pointer
+            }
+            else {
+                to_append = PyNone_Get()
+            }
+            
+            PyList_Append(pythonObjPtr, to_append)
         }
     }
     
@@ -36,4 +49,24 @@ public class PythonList : PythonObject, ExpressibleByArrayLiteral {
 
 public func __bridgeToPython<C: Collection>(_ coll: C) -> PythonList {
     return PythonList(fromCollection: coll)
+}
+
+public func __bridgeElementsToPython(_ dict: Dictionary<String, PythonBridgeable>) -> Dictionary<String, PythonBridge> {
+    return dict.mapValues{ $0.bridgeToPython() }
+}
+
+public func __bridgeElementsToPython<C: Collection>(_ coll: C) -> [PythonBridge] where C.Iterator.Element : PythonBridgeable {
+    return coll.map { (obj: PythonBridgeable) -> PythonBridge in
+        obj.bridgeToPython()
+    }
+}
+
+extension Dictionary {
+    func mapValues<T>(_ transform: (Value)->T) -> Dictionary<Key,T> {
+        var resultDict = [Key: T]()
+        for (k, v) in self {
+            resultDict[k] = transform(v)
+        }
+        return resultDict
+    }
 }

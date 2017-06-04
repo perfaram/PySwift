@@ -105,9 +105,10 @@ let sayHelloFn = "def sayHello(name, surname = \"\", times = 1):\n" +
 "        print(\"Hello, \" + name + \" \" + surname + \"!\")"
 evalStatement(sayHelloFn) //load the code in the interpreter
 
-var keywordArgs : Dictionary<String, PythonBridge> = ["times" : 3.bridgeToPython(), "surname" : "Bond".bridgeToPython()]
-var positionalArgs = ["James".bridgeToPython()]
-call("sayHello", positionalArgs: positionalArgs, keywordArgs: keywordArgs)
+var keywordArgs : [String : PythonBridgeable] = ["times" : 3, "surname" : "Bond"]
+
+var positionalArgs = ["James"]
+call("sayHello", positionalArgs: __bridgeElementsToPython(positionalArgs), keywordArgs: __bridgeElementsToPython(keywordArgs))
 
 ////////////////////////////////////
 ////////////////////////////////////
@@ -123,6 +124,6 @@ let astonishingFunction = "from __future__ import print_function\n" +
 "        print(\"%s = %s\" % (k, v))"
 evalStatement(astonishingFunction) //load the code in the interpreter
 
-keywordArgs = ["First Key" : 17.18.bridgeToPython(), "Second Key" : "Second value".bridgeToPython(), "Third Key" : "3rd value".bridgeToPython()]
-positionalArgs = ["This", "function", "is", "variadic :", "it", "may", "take", "as", "many", "arguments", "as", "wanted."].map { __bridgeToPython($0) }
-call("astonishingFunction", positionalArgs: positionalArgs, keywordArgs: keywordArgs)
+keywordArgs = ["First Key" : 17.18, "Second Key" : "Second value", "Third Key" : "3rd value"]
+positionalArgs = ["This", "function", "is", "variadic :", "it", "may", "take", "as", "many", "arguments", "as", "wanted."]
+call("astonishingFunction", positionalArgs: __bridgeElementsToPython(positionalArgs), keywordArgs: __bridgeElementsToPython(keywordArgs))
