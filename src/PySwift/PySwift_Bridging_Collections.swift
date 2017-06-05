@@ -61,6 +61,20 @@ public func __bridgeElementsToPython<C: Collection>(_ coll: C) -> [PythonBridge]
     }
 }
 
+public func __bridgeElementsToPython(_ dict: Dictionary<String, PythonBridgeable?>) -> Dictionary<String, PythonBridge> {
+    return dict.mapValues{
+        guard let value = $0 else { return PythonNone() }
+        return value.bridgeToPython()
+    }
+}
+
+public func __bridgeElementsToPython<C: Collection>(_ coll: C) -> [PythonBridge] where C.Iterator.Element == Optional<PythonBridgeable> {
+    return coll.map { (obj: PythonBridgeable?) -> PythonBridge in
+        guard let value = obj else { return PythonNone() }
+        return value.bridgeToPython()
+    }
+}
+
 public extension Collection /*: PythonBridgeable*/ {
     func bridgeToPython() -> PythonBridge {
         return PythonList(fromCollection: self)

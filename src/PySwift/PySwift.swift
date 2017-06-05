@@ -3,52 +3,68 @@ import PySwift_None
 
 public typealias PythonObjectPointer = UnsafeMutablePointer<PyObject>
 
-public func initPython() {
-    Py_Initialize()
-    let main = pythonImport(name: "__main__")
-    let maindict = PyModule_GetDict(main.pythonObjPtr)
+public class PythonSwift {
+    private struct Helpers {
+        public static func `import`(moduleNamed name:String) -> PythonObject {
+            let module = PyImport_ImportModule(name)
+            return PythonObject(ptr:module)
+        }
+        
+        public static func wrap(statement: String) -> String {
+            return "def _pyswift_eval_wrapper_():\n" +
+                "    result = \(statement)\n" +
+            "    return result"
+        }
+    }
     
-    let builtinsdict = PyEval_GetBuiltins()
+    public static let sharedInstance = PythonSwift() //lazy
     
-    guard PyDict_Merge(maindict, builtinsdict, 0) == 0 else { return }
-}
-
-public func importModule(named name: String) -> Bool {
-    let main = pythonImport(name: "__main__")
-    let maindict = PyModule_GetDict(main.pythonObjPtr)
+    private let pythonMain : PythonModule
+    private let pythonNone : PythonNone
     
-    let module = pythonImport(name: name)
+    public init?() {
+        Py_Initialize()
+        
+        pythonNone = PythonNone()
+        
+        pythonMain = Helpers.import(moduleNamed: "__main__")
+        guard pythonMain != pythonNone else { return nil }
+        
+        let maindict = PyModule_GetDict(pythonMain.pythonObjPtr)
+        let builtinsdict = PyEval_GetBuiltins()
+        
+        guard PyDict_Merge(maindict, builtinsdict, 0) == 0 else { return nil }
+    }
     
-    guard PyDict_SetItemString(maindict, name, module.pythonObjPtr) == 0 else { return false }
-    return true
-}
-
-public func evalStatement(_ string: String) {
-    PyRun_SimpleStringFlags(string, nil);
-}
-
-@discardableResult public func call(_ code: String, args:PythonBridge...) -> PythonObject {
-    let main = pythonImport(name: "__main__")
-    return main.call(code, args: args)
-}
-
-@discardableResult public func call(_ funcName: String, positionalArgs: [PythonBridge], keywordArgs: Dictionary<String, PythonBridge>) -> PythonObject {
-    let main = pythonImport(name: "__main__")
-    return main.call(funcName, positionalArgs: positionalArgs, keywordArgs: keywordArgs)
-}
-
-internal func wrapEvalString( string : String) -> String {
-    return "def _swiftpy_eval_wrapper_():\n" +
-        "    result = \(string)\n" +
-    "    return result"
-}
-
-//TODO handle def case
-public func eval(_ code:String) -> PythonObject {
-    let wrappedCode = wrapEvalString(string:code)
-    evalStatement(wrappedCode)
-    let main = pythonImport(name: "__main__")
-    return main.call("_swiftpy_eval_wrapper_")
+    public func importModule(named name: String) -> Bool {
+        let maindict = PyModule_GetDict(pythonMain.pythonObjPtr)
+        
+        let module = Helpers.import(moduleNamed: name)
+        guard pythonMain != pythonNone else { return false }
+        
+        guard PyDict_SetItemString(maindict, name, module.pythonObjPtr) == 0 else { return false }
+        return true
+    }
+    
+    public func execute(code string: String) {
+        PyRun_SimpleStringFlags(string, nil) //PyRun_StringFlags
+    }
+    
+    //TODO handle def case
+    public func eval(statement:String) -> PythonObject {
+        let wrappedCode = Helpers.wrap(statement: statement)
+        execute(code: wrappedCode)
+        
+        return pythonMain.call("_pyswift_eval_wrapper_")
+    }
+    
+    @discardableResult public func call(_ funcName: String, args:PythonBridge...) -> PythonObject {
+        return pythonMain.call(funcName, args: args)
+    }
+    
+    @discardableResult public func call(_ funcName: String, positionalArgs: [PythonBridge], keywordArgs: Dictionary<String, PythonBridge>) -> PythonObject {
+        return pythonMain.call(funcName, positionalArgs: positionalArgs, keywordArgs: keywordArgs)
+    }
 }
 
 public protocol PythonBridgeable {
@@ -73,13 +89,19 @@ public func ==(lhs: PythonBridge, rhs: PythonBridge) -> Bool {
     return (ret == 1)
 }
 
+public func !=(lhs: PythonBridge, rhs: PythonBridge) -> Bool {
+    let ret = PyObject_RichCompareBool(lhs.pythonObjPtr!, rhs.pythonObjPtr!, Py_NE)
+    return (ret == 1)
+}
+
 extension PythonBridge {
     @discardableResult public func call(_ funcName: String, args: PythonBridge...) -> PythonObject {
         return call(funcName, args:args)
     }
     
     @discardableResult public func call(_ funcName: String, args: [PythonBridge]) -> PythonObject {
-        let pFunc = PyObject_GetAttrString(pythonObjPtr!, funcName) //PyDict_GetItemString(module_dict, "functionName")
+        let pFunc = PyObject_GetAttrString(pythonObjPtr!, funcName)
+        //PyDict_GetItemString(module_dict, "functionName")
         guard PyCallable_Check(pFunc) == 1 else { return PythonObject() }
         let pArgs = PyTuple_New(args.count)
         for (idx,obj) in args.enumerated() {
@@ -140,24 +162,19 @@ extension PythonBridge {
     
 }
 
-public func pythonImport(name:String) -> PythonObject{
-    let module = PyImport_ImportModule(name)
-    return PythonObject(ptr:module)
-}
-
 //TODO
 public func convertPythonObjectPointer(cPyObj ptr:PythonObjectPointer) -> PythonBridge {
     //NOT impl yet
     return PythonObject(ptr:ptr)
 }
 
-public class PythonObject : PythonBridge, CustomDebugStringConvertible {
+open class PythonObject : PythonBridge, CustomDebugStringConvertible {
     public private(set) var pythonObjPtr: PythonObjectPointer?
     
     public init() {
         pythonObjPtr = PyNone_Get()
     }
-    init(ptr: PythonObjectPointer?) {
+    public init(ptr: PythonObjectPointer?) {
         self.pythonObjPtr = ptr ?? PyNone_Get()
         Py_IncRef(pythonObjPtr)
     }
@@ -174,3 +191,5 @@ public class PythonObject : PythonBridge, CustomDebugStringConvertible {
         Py_DecRef(pythonObjPtr)
     }
 }
+
+typealias PythonModule = PythonObject
