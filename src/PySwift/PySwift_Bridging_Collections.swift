@@ -61,6 +61,12 @@ public func __bridgeElementsToPython<C: Collection>(_ coll: C) -> [PythonBridge]
     }
 }
 
+public extension Collection /*: PythonBridgeable*/ {
+    func bridgeToPython() -> PythonBridge {
+        return PythonList(fromCollection: self)
+    }
+}
+
 extension Dictionary {
     func mapValues<T>(_ transform: (Value)->T) -> Dictionary<Key,T> {
         var resultDict = [Key: T]()
