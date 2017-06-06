@@ -7,7 +7,7 @@ public class PythonInt : PythonObject, ExpressibleByIntegerLiteral {
         super.init(ptr: PyInt_FromLong(value))
     }
     
-    override init(ptr: PythonObjectPointer?) {
+    public required init(ptr: PythonObjectPointer?) {
         super.init(ptr: ptr ?? PyNone_Get())
     }
 }
@@ -18,7 +18,7 @@ public class PythonFloat : PythonObject, ExpressibleByFloatLiteral {
         super.init(ptr: PyFloat_FromDouble(value))
     }
     
-    override init(ptr: PythonObjectPointer?) {
+    public required init(ptr: PythonObjectPointer?) {
         super.init(ptr: ptr ?? PyNone_Get())
     }
 }
@@ -41,14 +41,30 @@ extension Double : PythonBridgeable {
     }
 }
 
-func __bridgeToPython<I: Integer>(_ int: I) -> PythonBridge {
+public func __bridgeToPython<I: Integer>(_ int: I) -> PythonBridge {
     return PythonInt(ptr: PyInt_FromLong(int as! Int))
 }
 
-func __bridgeToPython(_ float: Float) -> PythonBridge {
-    return PythonInt(ptr: PyFloat_FromDouble(Double(float)))
+public func __bridgeToPython(_ float: Float) -> PythonBridge {
+    return PythonFloat(ptr: PyFloat_FromDouble(Double(float)))
 }
 
-func __bridgeToPython(_ double: Double) -> PythonBridge {
-    return PythonInt(ptr: PyFloat_FromDouble(double))
+public func __bridgeToPython(_ double: Double) -> PythonBridge {
+    return PythonFloat(ptr: PyFloat_FromDouble(double))
 }
+
+public func __bridgeFromPython(_ int: PythonInt) -> Int? {
+    guard !int.isNone else { return nil }
+    return Int(PyInt_AsLong(int.pythonObjPtr))
+}
+
+public func __bridgeFromPython(_ float: PythonFloat) -> Float? {
+    guard !float.isNone else { return nil }
+    return Float(PyFloat_AsDouble(float.pythonObjPtr))
+}
+
+public func __bridgeFromPython(_ double: PythonFloat) -> Double? {
+    guard !double.isNone else { return nil }
+    return Double(PyFloat_AsDouble(double.pythonObjPtr))
+}
+

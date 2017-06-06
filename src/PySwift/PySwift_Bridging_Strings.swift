@@ -21,13 +21,19 @@ public class PythonString : PythonObject, ExpressibleByStringLiteral {
         super.init(ptr: PyString_FromString(str))
     }
     
-    override init(ptr: PythonObjectPointer?) {
+    public required init(ptr: PythonObjectPointer?) {
         super.init(ptr: ptr ?? PyNone_Get())
     }
 }
 
 public func __bridgeToPython(_ str: String) -> PythonString {
+    //guard let string = str else { return PythonNone() }
     return PythonString(ptr: PyString_FromString(str))
+}
+
+public func __bridgeFromPython(_ str: PythonString) -> String? {
+    guard !str.isNone else { return nil }
+    return String(cString: PyString_AsString(str.pythonObjPtr))
 }
 
 extension String : PythonBridgeable {

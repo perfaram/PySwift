@@ -42,7 +42,7 @@ public class PythonList : PythonObject, ExpressibleByArrayLiteral {
         }
     }
     
-    override init(ptr: PythonObjectPointer?) {
+    public required init(ptr: PythonObjectPointer?) {
         super.init(ptr: ptr ?? PyNone_Get())
     }
 }

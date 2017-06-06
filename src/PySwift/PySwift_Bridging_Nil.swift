@@ -11,8 +11,8 @@ public class PythonNone : PythonObject, ExpressibleByNilLiteral {
         super.init(ptr: PyNone_Get())
     }
     
-    override init(ptr: PythonObjectPointer?) {
-        super.init(ptr: PyNone_Get())
+    public required init(ptr: PythonObjectPointer?) {
+        super.init(ptr: ptr ?? PyNone_Get())
     }
 }
 

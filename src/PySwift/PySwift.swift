@@ -22,6 +22,14 @@ public class PythonSwift {
     private let pythonMain : PythonModule
     private let pythonNone : PythonNone
     
+    public var __main__ : PythonModule {
+        get { return pythonMain }
+    }
+    
+    public var None : PythonModule {
+        get { return pythonNone }
+    }
+    
     public init?() {
         Py_Initialize()
         
@@ -76,12 +84,18 @@ public protocol PythonBridge : CustomStringConvertible {
     var description:String { get }
     //TODO test the case of method with self
     @discardableResult func call(_ funcName: String, positionalArgs: [PythonBridge], keywordArgs: Dictionary<String, PythonBridge>) -> PythonObject
+    
     @discardableResult func call(_ funcName:String, args:PythonBridge...) -> PythonObject
     @discardableResult func call(_ funcName:String, args:[PythonBridge]) -> PythonObject
     
+    @discardableResult func call(args: PythonBridge...) -> PythonObject
+    @discardableResult func call(args: [PythonBridge]) -> PythonObject
+    
     func toPythonString() -> PythonString
-    func attr(_ name:String) -> PythonObject
-    func setAttr(_ name:String, value:PythonBridge)
+    func attribute<T: PythonObject>(_ name:String) -> T
+    func setAttribute(_ name:String, value:PythonBridge)
+    func attributeOrNil<T: PythonObject>(_ name:String) -> T?
+    func setAttribute(_ name:String, value:PythonBridge?)
 }
 
 public func ==(lhs: PythonBridge, rhs: PythonBridge) -> Bool {
@@ -95,6 +109,23 @@ public func !=(lhs: PythonBridge, rhs: PythonBridge) -> Bool {
 }
 
 extension PythonBridge {
+    @discardableResult public func call(args: PythonBridge...) -> PythonObject {
+        return call(args:args)
+    }
+    
+    @discardableResult public func call(args: [PythonBridge]) -> PythonObject {
+        guard PyCallable_Check(self.pythonObjPtr) == 1 else { return PythonObject() }
+        let pArgs = PyTuple_New(args.count)
+        for (idx,obj) in args.enumerated() {
+            let i:Int = idx
+            PyTuple_SetItem(pArgs, i, obj.pythonObjPtr!)
+        }
+        let pValue = PyObject_CallObject(self.pythonObjPtr, pArgs)
+        
+        Py_DecRef(pArgs)
+        return PythonObject(ptr: pValue)
+    }
+    
     @discardableResult public func call(_ funcName: String, args: PythonBridge...) -> PythonObject {
         return call(funcName, args:args)
     }
@@ -109,12 +140,9 @@ extension PythonBridge {
             PyTuple_SetItem(pArgs, i, obj.pythonObjPtr!)
         }
         let pValue = PyObject_CallObject(pFunc, pArgs)
+        
         Py_DecRef(pArgs)
         return PythonObject(ptr: pValue)
-    }
-    
-    @discardableResult public func call(_ funcName:String, keywordArgs: Dictionary<String, String>) -> PythonObject {
-        return PythonObject()
     }
     
     @discardableResult public func call(_ funcName: String, positionalArgs: [PythonBridge], keywordArgs: Dictionary<String, PythonBridge>) -> PythonObject {
@@ -145,13 +173,27 @@ extension PythonBridge {
         return PythonString(ptr:ptr)
     }
     
-    public func attr(_ name:String) -> PythonObject {
-        guard PyObject_HasAttrString(pythonObjPtr!, name) == 1 else {return PythonObject()}
-        return PythonObject(ptr:PyObject_GetAttrString(pythonObjPtr!, name))
+    public func attribute<T: PythonObject>(_ name:String) -> T {
+        guard PyObject_HasAttrString(pythonObjPtr!, name) == 1 else {return T(ptr: PyNone_Get())}
+        return T(ptr: PyObject_GetAttrString(pythonObjPtr!, name))
     }
     
-    public func setAttr(_ name:String, value:PythonBridge) {
+    public func attributeOrNil<T: PythonObject>(_ name:String) -> T? {
+        guard PyObject_HasAttrString(pythonObjPtr!, name) == 1 else { return nil }
+        return T(ptr: PyObject_GetAttrString(pythonObjPtr!, name))
+    }
+    
+    public func setAttribute(_ name:String, value:PythonBridge) {
         PyObject_SetAttrString(pythonObjPtr!, name, value.pythonObjPtr!)
+    }
+    
+    public func setAttribute(_ name:String, value:PythonBridge?) {
+        if let value = value {
+            PyObject_SetAttrString(pythonObjPtr!, name, value.pythonObjPtr!)
+        }
+        else {
+            PyObject_SetAttrString(pythonObjPtr!, name, PyNone_Get())
+        }
     }
     
     public var description: String {
@@ -160,6 +202,12 @@ extension PythonBridge {
         return String(cString : cstr)
     }
     
+}
+
+//this function basically forwards any call on a __bridgeToPython function with an optional to its actual, non-optional implementation, except if the optional is nil. In that case, in returns the None object directly. This avoids having to write two __bridgeToPython functions for every supported Swift type, one for the plain type and one for the type wrapped in an optional.
+public func __bridgeToPython<T: Any>(_ obj: Optional<T>) -> PythonObject {
+    guard let value = obj else { return PythonNone() }
+    return __bridgeToPython(value)
 }
 
 //TODO
@@ -174,11 +222,16 @@ open class PythonObject : PythonBridge, CustomDebugStringConvertible {
     public init() {
         pythonObjPtr = PyNone_Get()
     }
-    public init(ptr: PythonObjectPointer?) {
+    public required init(ptr: PythonObjectPointer?) {
         self.pythonObjPtr = ptr ?? PyNone_Get()
         Py_IncRef(pythonObjPtr)
     }
     
+    public var isNone: Bool {
+        get {
+            return self.pythonObjPtr == PyNone_Get()
+        }
+    }
     
     public var debugDescription: String {
         get {
@@ -188,8 +241,8 @@ open class PythonObject : PythonBridge, CustomDebugStringConvertible {
     }
     
     deinit {
-        Py_DecRef(pythonObjPtr)
+        //Py_DecRef(pythonObjPtr)
     }
 }
 
-typealias PythonModule = PythonObject
+public typealias PythonModule = PythonObject
