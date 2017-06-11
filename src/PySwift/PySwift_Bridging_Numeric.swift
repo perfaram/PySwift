@@ -1,7 +1,7 @@
 import Python
 import PySwift_ObjC
 
-public class PythonInt : PythonObject, ExpressibleByIntegerLiteral {
+public class PythonInt : PythonObject, BridgeableFromPython, ExpressibleByIntegerLiteral {
     public typealias IntegerLiteralType = Int
     public required init(integerLiteral value: IntegerLiteralType){
         super.init(ptr: PyInt_FromLong(value))
@@ -10,9 +10,15 @@ public class PythonInt : PythonObject, ExpressibleByIntegerLiteral {
     public required init(ptr: PythonObjectPointer?) {
         super.init(ptr: ptr ?? PyNone_Get())
     }
+    
+    public typealias SwiftMatchingType = Int
+    public func typedBridgeFromPython() -> Int? {
+        guard !self.isNone else { return nil }
+        return Int(PyInt_AsLong(self.pythonObjPtr))
+    }
 }
 
-public class PythonFloat : PythonObject, ExpressibleByFloatLiteral {
+public class PythonFloat : PythonObject, BridgeableFromPython, ExpressibleByFloatLiteral {
     public typealias FloatLiteralType = Double
     public required init(floatLiteral value: FloatLiteralType){
         super.init(ptr: PyFloat_FromDouble(value))
@@ -20,6 +26,12 @@ public class PythonFloat : PythonObject, ExpressibleByFloatLiteral {
     
     public required init(ptr: PythonObjectPointer?) {
         super.init(ptr: ptr ?? PyNone_Get())
+    }
+    
+    public typealias SwiftMatchingType = Float
+    public func typedBridgeFromPython() -> Float? {
+        guard !self.isNone else { return nil }
+        return Float(PyFloat_AsDouble(self.pythonObjPtr))
     }
 }
 

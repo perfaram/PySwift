@@ -45,10 +45,57 @@ public class PythonList : PythonObject, ExpressibleByArrayLiteral {
     public required init(ptr: PythonObjectPointer?) {
         super.init(ptr: ptr ?? PyNone_Get())
     }
+    
+    public init(ptr: UnsafeMutablePointer<PyListObject>) {
+        let pyObjPtr = ptr.withMemoryRebound(to: PyObject.self, capacity: 1, { pyobjPtr -> PythonObjectPointer in
+            return pyobjPtr
+        })
+        super.init(ptr: pyObjPtr)
+    }
 }
 
 public func __bridgeToPython<C: Collection>(_ coll: C) -> PythonList {
     return PythonList(fromCollection: coll)
+}
+
+public func determinateAppropriateTypeForPythonReference(_ ref: PythonObjectPointer) -> PythonBridge.Type
+{
+    return PythonInt.self
+}
+
+public func __bridgeFromPython(_ list: PythonList) -> Array<Any>? {
+    guard !list.isNone else { return nil }
+    
+    var retArray = Array<Any!>()
+    
+    list.pythonObjPtr!.withMemoryRebound(to: PyObject.self, capacity: 1, { (pyobjPtr) -> Void in
+        let len : UInt
+        let seq = PySequence_Fast(pyobjPtr, "expected a sequence")
+        len = UInt(PySequence_Size(pyobjPtr))
+        
+        if (PyList_CheckIsList(seq!)) {
+            for i in 0..<len {
+                let item = PyList_Get_Item(seq!, i)
+                let type = determinateAppropriateTypeForPythonReference(item)
+                
+                let pyBridge = type.init(ptr: item) as! UntypedBridgeableFromPython
+                let swValue = pyBridge.bridgeFromPython()
+                retArray.append(swValue)
+            }
+        } else {
+            for i in 0..<len {
+                let item = PyList_Get_Item(seq!, i);
+                let type = determinateAppropriateTypeForPythonReference(item)
+                
+                let pyBridge = type.init(ptr: item) as! UntypedBridgeableFromPython
+                let swValue = pyBridge.bridgeFromPython()
+                retArray.append(swValue)
+            }
+        }
+        Py_DecRef(seq);
+    })
+    
+    return retArray
 }
 
 public func __bridgeElementsToPython(_ dict: Dictionary<String, BridgeableToPython>) -> Dictionary<String, PythonBridge> {

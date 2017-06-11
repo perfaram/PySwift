@@ -1,6 +1,23 @@
 import Python
 import PySwift_ObjC
 
+public enum PySwiftError : Error, CustomStringConvertible {
+    case InterpreterError(error: (message: String, column: Int, line: Int))
+    case UnexpectedTypeError(expected: Any.Type, got: Any.Type)
+    case UnexpectedNone()
+    
+    public var description: String {
+        switch self {
+        case .InterpreterError(let pyError):
+            return "Python error at \(pyError.line):\(pyError.column) `\(pyError.message)`."
+        case .UnexpectedTypeError(let expected, let got):
+            return "Bridging error, expected Swift type \(expected) and got \(got) instead."
+        case .UnexpectedNone:
+            return "Function received None as an argument where an actual value was expected."
+        }
+    }
+}
+
 public typealias PythonObjectPointer = UnsafeMutablePointer<PyObject>
 
 public class PythonSwift {
@@ -73,15 +90,94 @@ public class PythonSwift {
     @discardableResult public func call(_ funcName: String, positionalArgs: [PythonBridge], keywordArgs: Dictionary<String, PythonBridge>) -> PythonObject {
         return pythonMain.call(funcName, positionalArgs: positionalArgs, keywordArgs: keywordArgs)
     }
+    
+    public func registerModule(named name: String, methods: [PythonMethod], documented doc: String? = nil) throws -> PythonModule {
+        let methodsDefArray = buildMethodsDefArray(methods)
+        let rawModule = Py_InitModule4_64(name, methodsDefArray, doc, nil, PYTHON_API_VERSION)
+        let module = PythonModule(ptr: rawModule)
+        
+        if (module == pythonNone) && (PyErr_Occurred() != nil) {
+            throw PythonSwift.retrievePythonException()!
+        }
+        
+        return module
+    }
+    
+    public class func setPythonException(_ message: String,
+                                         line : Int = #line,
+                                         column : Int = #column,
+                                         functionNamed : String = #function,
+                                         file : String = #file) {
+        let errorString = functionNamed + ":\(line):\(column): " + message
+        PyErr_SetString(PyExc_RuntimeError, errorString)
+    }
+    
+    public class func setPythonException(_ error: PySwiftError,
+                                         line : Int = #line,
+                                         column : Int = #column,
+                                         functionNamed : String = #function,
+                                         file : String = #file) {
+        let errorString = functionNamed + ":\(line):\(column): \(error)"
+        PyErr_SetString(PyExc_RuntimeError, errorString)
+    }
+    
+    public class func retrievePythonException() -> PySwiftError? {
+        if (PyErr_Occurred() == nil) {
+            return nil
+        }
+        
+        var exceptionType: UnsafeMutablePointer<PyObject>? = prepareFor(PyObject.self)
+        var exceptionValue: UnsafeMutablePointer<PyObject>? = prepareFor(PyObject.self)
+        var exceptionTraceback: UnsafeMutablePointer<PyObject>? = prepareFor(PyObject.self)
+        var exceptionOffset: UnsafeMutablePointer<PyObject>? = prepareFor(PyObject.self)
+        var exceptionLine: UnsafeMutablePointer<PyObject>? = prepareFor(PyObject.self)
+        
+        PyErr_Fetch(&exceptionType, &exceptionValue, &exceptionTraceback);
+        PyErr_NormalizeException(&exceptionType, &exceptionValue, &exceptionTraceback);
+        
+        exceptionOffset = PyObject_GetAttrString(exceptionValue, "offset");
+        exceptionLine = PyObject_GetAttrString(exceptionValue, "lineno");
+        
+        var swLine = 0
+        var swCol = 0
+        
+        if ((exceptionOffset != nil) && (exceptionOffset != PyNone_Get()))
+        {
+            swCol = PyInt_AsLong(exceptionOffset);
+        }
+        
+        if ((exceptionLine != nil) && (exceptionLine != PyNone_Get()))
+        {
+            swLine = PyInt_AsLong(exceptionLine);
+        }
+        
+        let swMsg = String(cString: PyString_AsString(PyObject_Str(exceptionValue)))
+        
+        let error = PySwiftError.InterpreterError(error: (message: swMsg, column: swCol, line: swLine))
+        
+        PyErr_Clear();
+        
+        return error
+    }
 }
 
 public protocol BridgeableToPython {
     func bridgeToPython() -> PythonBridge
 }
 
-public protocol BridgeableFromPython {
+public protocol UntypedBridgeableFromPython {
+    func bridgeFromPython() -> Any?
+}
+
+public protocol BridgeableFromPython : UntypedBridgeableFromPython {
     associatedtype SwiftMatchingType
-    func bridgeFromPython() -> SwiftMatchingType?
+    func typedBridgeFromPython() -> SwiftMatchingType?
+}
+
+extension BridgeableFromPython {
+    public func bridgeFromPython() -> Any? {
+        return self.typedBridgeFromPython() as Any
+    }
 }
 
 //wraps and exposes a Swift object in Python
@@ -106,6 +202,8 @@ public protocol PythonBridge : CustomStringConvertible {
     func setAttribute(_ name:String, value:PythonBridge)
     func attributeOrNil<T: PythonObject>(_ name:String) -> T?
     func setAttribute(_ name:String, value:PythonBridge?)
+    
+    init(ptr: PythonObjectPointer?)
 }
 
 public func ==(lhs: PythonBridge, rhs: PythonBridge) -> Bool {

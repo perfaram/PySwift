@@ -26,7 +26,7 @@ public class PythonString : PythonObject, BridgeableFromPython, ExpressibleByStr
     }
     
     public typealias SwiftMatchingType = String
-    public func bridgeFromPython() -> String? {
+    public func typedBridgeFromPython() -> String? {
         guard !self.isNone else { return nil }
         return String(cString: PyString_AsString(self.pythonObjPtr))
     }
