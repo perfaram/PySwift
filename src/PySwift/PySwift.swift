@@ -241,7 +241,7 @@ open class PythonObject : PythonBridge, CustomDebugStringConvertible {
     }
     
     deinit {
-        //Py_DecRef(pythonObjPtr)
+        Py_DecRef(pythonObjPtr)
     }
 }
 
