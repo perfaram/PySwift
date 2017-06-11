@@ -1,5 +1,5 @@
 import Python
-import PySwift_None
+import PySwift_ObjC
 
 public typealias PythonObjectPointer = UnsafeMutablePointer<PyObject>
 
@@ -84,6 +84,10 @@ public protocol BridgeableFromPython {
     func bridgeFromPython() -> SwiftMatchingType?
 }
 
+//wraps and exposes a Swift object in Python
+
+
+//wraps and exposes a Python object in Swift
 public protocol PythonBridge : CustomStringConvertible {
     var pythonObjPtr: PythonObjectPointer? { get }
     var description:String { get }

@@ -1,5 +1,5 @@
 import Python
-import PySwift_None
+import PySwift_ObjC
 
 public class PythonNone : PythonObject, ExpressibleByNilLiteral {
     

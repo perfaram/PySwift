@@ -1,6 +1,6 @@
 import PySwift
 import Python
-import PySwift_None
+import PySwift_ObjC
 
 print("First things first : you absolutely have to initialize the Python interpreter before anything else.")
 guard let PySwift = PythonSwift.sharedInstance else { exit(1) } //required before anything else
