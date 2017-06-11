@@ -75,13 +75,19 @@ public class PythonSwift {
     }
 }
 
-public protocol PythonBridgeable {
+public protocol BridgeableToPython {
     func bridgeToPython() -> PythonBridge
+}
+
+public protocol BridgeableFromPython {
+    associatedtype SwiftMatchingType
+    func bridgeFromPython() -> SwiftMatchingType?
 }
 
 public protocol PythonBridge : CustomStringConvertible {
     var pythonObjPtr: PythonObjectPointer? { get }
     var description:String { get }
+    var isNone: Bool { get }
     //TODO test the case of method with self
     @discardableResult func call(_ funcName: String, positionalArgs: [PythonBridge], keywordArgs: Dictionary<String, PythonBridge>) -> PythonObject
     
@@ -196,6 +202,12 @@ extension PythonBridge {
         }
     }
     
+    public var isNone: Bool {
+        get {
+            return self.pythonObjPtr! == PyNone_Get()
+        }
+    }
+    
     public var description: String {
         let pyString = toPythonString()
         let cstr:UnsafePointer<CChar> = UnsafePointer(PyString_AsString(pyString.pythonObjPtr!)!)
@@ -225,12 +237,6 @@ open class PythonObject : PythonBridge, CustomDebugStringConvertible {
     public required init(ptr: PythonObjectPointer?) {
         self.pythonObjPtr = ptr ?? PyNone_Get()
         Py_IncRef(pythonObjPtr)
-    }
-    
-    public var isNone: Bool {
-        get {
-            return self.pythonObjPtr == PyNone_Get()
-        }
     }
     
     public var debugDescription: String {

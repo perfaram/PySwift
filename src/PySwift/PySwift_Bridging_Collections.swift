@@ -13,7 +13,7 @@ public class PythonList : PythonObject, ExpressibleByArrayLiteral {
         for (index, element) in elements.enumerated() {
             var to_append : PythonObjectPointer
             
-            if let pointer = (element as? PythonBridgeable)?.bridgeToPython().pythonObjPtr {
+            if let pointer = (element as? BridgeableToPython)?.bridgeToPython().pythonObjPtr {
                 to_append = pointer
             }
             else {
@@ -31,7 +31,7 @@ public class PythonList : PythonObject, ExpressibleByArrayLiteral {
         while let element = iterator.next() {
             var to_append : PythonObjectPointer
             
-            if let pointer = (element as? PythonBridgeable)?.bridgeToPython().pythonObjPtr {
+            if let pointer = (element as? BridgeableToPython)?.bridgeToPython().pythonObjPtr {
                 to_append = pointer
             }
             else {
@@ -51,31 +51,31 @@ public func __bridgeToPython<C: Collection>(_ coll: C) -> PythonList {
     return PythonList(fromCollection: coll)
 }
 
-public func __bridgeElementsToPython(_ dict: Dictionary<String, PythonBridgeable>) -> Dictionary<String, PythonBridge> {
+public func __bridgeElementsToPython(_ dict: Dictionary<String, BridgeableToPython>) -> Dictionary<String, PythonBridge> {
     return dict.mapValues{ $0.bridgeToPython() }
 }
 
-public func __bridgeElementsToPython<C: Collection>(_ coll: C) -> [PythonBridge] where C.Iterator.Element : PythonBridgeable {
-    return coll.map { (obj: PythonBridgeable) -> PythonBridge in
+public func __bridgeElementsToPython<C: Collection>(_ coll: C) -> [PythonBridge] where C.Iterator.Element : BridgeableToPython {
+    return coll.map { (obj: BridgeableToPython) -> PythonBridge in
         obj.bridgeToPython()
     }
 }
 
-public func __bridgeElementsToPython(_ dict: Dictionary<String, PythonBridgeable?>) -> Dictionary<String, PythonBridge> {
+public func __bridgeElementsToPython(_ dict: Dictionary<String, BridgeableToPython?>) -> Dictionary<String, PythonBridge> {
     return dict.mapValues{
         guard let value = $0 else { return PythonNone() }
         return value.bridgeToPython()
     }
 }
 
-public func __bridgeElementsToPython<C: Collection>(_ coll: C) -> [PythonBridge] where C.Iterator.Element == Optional<PythonBridgeable> {
-    return coll.map { (obj: PythonBridgeable?) -> PythonBridge in
+public func __bridgeElementsToPython<C: Collection>(_ coll: C) -> [PythonBridge] where C.Iterator.Element == Optional<BridgeableToPython> {
+    return coll.map { (obj: BridgeableToPython?) -> PythonBridge in
         guard let value = obj else { return PythonNone() }
         return value.bridgeToPython()
     }
 }
 
-public extension Collection /*: PythonBridgeable*/ {
+public extension Collection /*: BridgeableToPython*/ {
     func bridgeToPython() -> PythonBridge {
         return PythonList(fromCollection: self)
     }

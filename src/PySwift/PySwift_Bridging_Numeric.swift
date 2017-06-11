@@ -23,19 +23,19 @@ public class PythonFloat : PythonObject, ExpressibleByFloatLiteral {
     }
 }
 
-extension Int : PythonBridgeable {
+extension Int : BridgeableToPython {
     public func bridgeToPython() -> PythonBridge {
         return PythonInt(ptr: PyInt_FromLong(self))
     }
 }
 
-extension Float : PythonBridgeable {
+extension Float : BridgeableToPython {
     public func bridgeToPython() -> PythonBridge {
         return PythonFloat(ptr: PyFloat_FromDouble(Double(self)))
     }
 }
 
-extension Double : PythonBridgeable {
+extension Double : BridgeableToPython {
     public func bridgeToPython() -> PythonBridge {
         return PythonFloat(ptr: PyFloat_FromDouble(self))
     }

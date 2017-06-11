@@ -106,7 +106,7 @@ let sayHelloFn = "def sayHello(name, surname = \"\", times = 1):\n" +
 "        print(\"Hello, \" + name + \" \" + surname + \"!\")"
 PySwift.execute(code: sayHelloFn) //load the code in the interpreter
 
-var keywordArgs : [String : PythonBridgeable] = ["times" : 3, "surname" : "Bond"]
+var keywordArgs : [String : BridgeableToPython] = ["times" : 3, "surname" : "Bond"]
 
 var positionalArgs = ["James"]
 PySwift.call("sayHello", positionalArgs: __bridgeElementsToPython(positionalArgs), keywordArgs: __bridgeElementsToPython(keywordArgs))

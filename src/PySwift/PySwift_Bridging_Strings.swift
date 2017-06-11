@@ -1,7 +1,7 @@
 import Python
 import PySwift_None
 
-public class PythonString : PythonObject, ExpressibleByStringLiteral {
+public class PythonString : PythonObject, BridgeableFromPython, ExpressibleByStringLiteral {
     
     public typealias ExtendedGraphemeClusterLiteralType = StringLiteralType
     public typealias UnicodeScalarLiteralType = StringLiteralType
@@ -24,6 +24,12 @@ public class PythonString : PythonObject, ExpressibleByStringLiteral {
     public required init(ptr: PythonObjectPointer?) {
         super.init(ptr: ptr ?? PyNone_Get())
     }
+    
+    public typealias SwiftMatchingType = String
+    public func bridgeFromPython() -> String? {
+        guard !self.isNone else { return nil }
+        return String(cString: PyString_AsString(self.pythonObjPtr))
+    }
 }
 
 public func __bridgeToPython(_ str: String) -> PythonString {
@@ -36,7 +42,7 @@ public func __bridgeFromPython(_ str: PythonString) -> String? {
     return String(cString: PyString_AsString(str.pythonObjPtr))
 }
 
-extension String : PythonBridgeable {
+extension String : BridgeableToPython {
     public func bridgeToPython() -> PythonBridge {
         return PythonString(ptr: PyString_FromString(self))
     }

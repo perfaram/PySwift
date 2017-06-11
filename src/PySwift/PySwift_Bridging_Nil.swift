@@ -20,13 +20,13 @@ public func __bridgeToPython(_ nil: ()) -> PythonNone {
     return PythonNone()
 }
 
-public func __bridgeToPython(_ optional: Optional<PythonBridgeable>) -> PythonBridge {
+public func __bridgeToPython(_ optional: Optional<BridgeableToPython>) -> PythonBridge {
     guard let value = optional else { return PythonNone() }
     return value.bridgeToPython()
 }
 
 /* PRESERVED FOR WHEN SE-0143 GETS IMPLEMENTED
-extension Optional : PythonBridgeable where Optional.Wrapped == PythonBridgeable {
+extension Optional : BridgeableToPython where Optional.Wrapped == BridgeableToPython {
     func bridgeToPython() -> PythonBridge {
         guard let value = self else { return PythonNone() }
         return value.bridgeToPython()
