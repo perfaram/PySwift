@@ -113,3 +113,7 @@ public func parseSelfAndArgs<S : PythonObject>(
     
     return S(ptr: pySelf)
 }
+
+public func getPointerToPythonObjectType(_ type: UnsafePointer<PyTypeObject>) -> PythonTypeObjectPointer {
+    return type
+}

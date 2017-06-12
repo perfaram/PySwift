@@ -19,6 +19,7 @@ public enum PySwiftError : Error, CustomStringConvertible {
 }
 
 public typealias PythonObjectPointer = UnsafeMutablePointer<PyObject>
+public typealias PythonTypeObjectPointer = UnsafePointer<PyTypeObject>
 
 public class PythonSwift {
     private struct Helpers {
@@ -166,7 +167,7 @@ public protocol BridgeableToPython {
 }
 
 public protocol UntypedBridgeableFromPython {
-    func bridgeFromPython() -> Any?
+    func bridgeFromPython() -> Any
 }
 
 public protocol BridgeableFromPython : UntypedBridgeableFromPython {
@@ -175,7 +176,7 @@ public protocol BridgeableFromPython : UntypedBridgeableFromPython {
 }
 
 extension BridgeableFromPython {
-    public func bridgeFromPython() -> Any? {
+    public func bridgeFromPython() -> Any {
         return self.typedBridgeFromPython() as Any
     }
 }
@@ -319,7 +320,7 @@ extension PythonBridge {
 }
 
 //this function basically forwards any call on a __bridgeToPython function with an optional to its actual, non-optional implementation, except if the optional is nil. In that case, in returns the None object directly. This avoids having to write two __bridgeToPython functions for every supported Swift type, one for the plain type and one for the type wrapped in an optional.
-public func __bridgeToPython<T: Any>(_ obj: Optional<T>) -> PythonObject {
+public func __bridgeToPython<T: Any>(_ obj: Optional<T>) -> PythonBridge {
     guard let value = obj else { return PythonNone() }
     return __bridgeToPython(value)
 }

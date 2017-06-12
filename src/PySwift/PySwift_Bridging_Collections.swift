@@ -1,7 +1,7 @@
 import Python
 import PySwift_ObjC
 
-public class PythonList : PythonObject, ExpressibleByArrayLiteral {
+public class PythonList : PythonObject, BridgeableFromPython, ExpressibleByArrayLiteral {
     
     public convenience required init(arrayLiteral elements: Any...) {
         self.init(array: elements)
@@ -52,15 +52,15 @@ public class PythonList : PythonObject, ExpressibleByArrayLiteral {
         })
         super.init(ptr: pyObjPtr)
     }
+    
+    public typealias SwiftMatchingType = Array<Any>
+    public func typedBridgeFromPython() -> Array<Any>? {
+        return __bridgeFromPython(self)
+    }
 }
 
 public func __bridgeToPython<C: Collection>(_ coll: C) -> PythonList {
     return PythonList(fromCollection: coll)
-}
-
-public func determinateAppropriateTypeForPythonReference(_ ref: PythonObjectPointer) -> PythonBridge.Type
-{
-    return PythonInt.self
 }
 
 public func __bridgeFromPython(_ list: PythonList) -> Array<Any>? {
@@ -76,19 +76,24 @@ public func __bridgeFromPython(_ list: PythonList) -> Array<Any>? {
         if (PyList_CheckIsList(seq!)) {
             for i in 0..<len {
                 let item = PyList_Get_Item(seq!, i)
-                let type = determinateAppropriateTypeForPythonReference(item)
+                
+                guard let type = PythonBridgingManager.sharedInstance.getBridge(item) as? PythonBridge.Type
+                    else { retArray.append(PythonNone().bridgeFromPython()) ; continue }
                 
                 let pyBridge = type.init(ptr: item) as! UntypedBridgeableFromPython
                 let swValue = pyBridge.bridgeFromPython()
+                
                 retArray.append(swValue)
             }
         } else {
             for i in 0..<len {
-                let item = PyList_Get_Item(seq!, i);
-                let type = determinateAppropriateTypeForPythonReference(item)
+                let item = PyTuple_Get_Item(seq!, i)
+                guard let type = PythonBridgingManager.sharedInstance.getBridge(item) as? PythonBridge.Type
+                    else { retArray.append(PythonNone().bridgeFromPython()) ; continue }
                 
                 let pyBridge = type.init(ptr: item) as! UntypedBridgeableFromPython
                 let swValue = pyBridge.bridgeFromPython()
+                
                 retArray.append(swValue)
             }
         }
