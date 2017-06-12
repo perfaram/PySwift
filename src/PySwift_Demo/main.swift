@@ -198,3 +198,214 @@ print("Value `aString` is", testString, "in Swift and", __bridgeFromPython(aStri
 pObj.call("classMethodTest")
 pObj.call("staticMethodTest")
 pObj.call("methodTest")
+
+////////////////////////////////////
+////////////////////////////////////
+
+var numargs : Int = CommandLine.arguments.count
+let embNumargs : PyCFunction = {(self, args) -> PythonObjectPointer? in
+    //this method is declared as METH_NOARGS (see below), therefore, the `args` parameter is NULL
+    return Py_VaBuildValue("i", getVaList([numargs]))
+}
+
+func multiply(_ int : Int64, byInt : Int64) -> Int64 {
+    return int * byInt
+}
+
+let multiply_trampoline : PyCFunction = {(rawSelf, args) -> PythonObjectPointer? in
+    var firstArg: Int64 = 0
+    var secondArg: Int64 = 0
+    
+    guard let pySelf : PythonObject = parseSelfAndArgs(rawSelf, args, "LL", &firstArg, &secondArg)
+        else { return nil }
+    
+    let f : Int64 = multiply(firstArg, byInt: secondArg)
+    return Py_VaBuildValue("L", getVaList([f]))
+}
+
+let describeListAsSwiftArray : PyCFunction = {(rawSelf, args) -> PythonObjectPointer? in
+    var listArg: UnsafeMutablePointer<PyListObject> = prepareFor(PyListObject.self)
+    
+    guard let pySelf : PythonList = parseSelfAndArgs(rawSelf, args, "O", &listArg)
+        else { return nil }
+    //theoretically, returning nil without setting the Python exception (thru `PythonSwift.setPythonException`) should not be done, because then Python errors with "error return without exception set"
+    //however, it is here deemed acceptable because if `parseSelfAndArgs` returns nil, it means that it has detected an error, and if it has done so, it has already set the Python exception
+    
+    
+    guard let array : Array<Any> = __bridgeFromPython(PythonList(ptr: listArg))
+        else {
+            PythonSwift.setPythonException( PySwiftError.UnexpectedNone() ) //there we are the one having detected an error, therefore we have to set the Python exception ourselves
+            return nil
+    }
+    
+    let arrayDescription = __bridgeToPython(array.description)
+    return Py_VaBuildValue("O", getVaList([arrayDescription.pythonObjPtr!]))
+}
+
+let embMethodList = [PythonMethod(name: "numargs", impl: embNumargs, flags: METH_NOARGS, docs: "Return the number of arguments received by the process."),
+                     PythonMethod(name: "multiply", impl: multiply_trampoline, flags: METH_VARARGS, docs: "Test passing two `long` parameters and returning another."),
+                     PythonMethod(name: "describeListAsSwiftArray", impl: describeListAsSwiftArray, flags: METH_VARARGS, docs: "Test passing and bridging a list.")]
+let module = try PySwift.registerModule(named: "emb", methods: embMethodList)
+PySwift.execute(code: "import emb; print('Number of arguments', emb.numargs())")
+PySwift.execute(code: "print('Test1', emb.multiply(2, 3))")
+PySwift.execute(code: "print('Test2', emb.describeListAsSwiftArray([1, 8]))")
+PySwift.execute(code: "print('Test2bis', emb.describeListAsSwiftArray([[1, 8], 8]))")
+PySwift.execute(code: "print('Test3', emb.describeListAsSwiftArray(None))")
+
+////////////////////////////////////
+////////////////////////////////////
+
+public class Number {
+    var integer : Int
+    init(_ int : Int) {
+        integer = int
+    }
+    
+    func multiply(by: Int) -> Int {
+        return integer * by
+    }
+    
+    func multiply(by: Number) -> Int {
+        return integer * by.integer
+    }
+}
+
+extension Number : WrappableInPython {
+    static let pythonTypeDefinition: UnsafeMutablePointer<PyTypeObject> = {
+        let numbersMethodsDef = pythonMethodsDefinition
+        
+        let emb_NumberObjectInit : initproc = {(rawSelf, args, kwds) -> Int32 in
+            var longParam: UnsafeMutablePointer<Int64> = UnsafeMutablePointer<Int64>.allocate(capacity: 1)
+            defer {
+                longParam.deallocate(capacity: 1)
+            }
+            
+            let kwarray = ["number"] //NULL
+            let retCode = withArrayOfCStrings(kwarray) {kwlist -> Int32 in
+                let va_list: [CVarArg] = [longParam]
+                return withVaList(va_list) { vaListPtr -> Int32 in
+                    return PyArg_VaParseTupleAndKeywords(args, kwds, "L", UnsafeMutablePointer(mutating: kwlist), vaListPtr)
+                }
+            }
+            guard retCode > 0 else { return -1 }
+            
+            let swiftNumberInstance = Number(Int(longParam.pointee))
+            
+            rawSelf!.withMemoryRebound(to: pyswift_PyObjWrappingSwift.self, capacity: 1) {numberObjPtr in
+                numberObjPtr.pointee.wrapped_obj = bridgeRetained(obj: swiftNumberInstance)
+            }
+            
+            return 0;
+        }
+        
+        let numberTypeDef = buildPyTypeObject(named: "Number",
+                                              inModule: "emb",
+                                              sized: MemoryLayout<pyswift_PyObjWrappingSwift>.size,
+                                              flagged: -1,
+                                              documented: "Number objects",
+                                              pyInit: emb_NumberObjectInit,
+                                              methodList: numbersMethodsDef)
+        return numberTypeDef
+    }()
+    
+    static let pythonMethodsDefinition: UnsafeMutablePointer<PyMethodDef> = {
+        let emb_NumberObject_multiply : PyCFunction = {(rawSelf, args) -> PythonObjectPointer? in
+            var coco: UnsafeMutablePointer<Number> = prepareFor()
+            
+            guard let swiftInstance : Number = parseSelfAndArgs(rawSelf, args, "O", &coco)
+                else { return nil }
+            
+            let otherInst : Number = finishFor(coco)
+            
+            let f : Int64 = Int64(swiftInstance.multiply(by: otherInst))
+            
+            return Py_VaBuildValue("L", getVaList([f]))
+        }
+        
+        let emb_NumberObject_multiplyByInt : PyCFunction = {(rawSelf, args) -> PythonObjectPointer? in
+            var firstArg: Int64 = 0
+            
+            guard let swiftInstance : Number = parseSelfAndArgs(rawSelf, args, "L", &firstArg)
+                else { return nil }
+            
+            let f : Int64 = Int64(swiftInstance.multiply(by: Int(firstArg)))
+            
+            return Py_VaBuildValue("L", getVaList([f]))
+        }
+        
+        let numberMethArray = [PythonMethod(name: "multiplyByInt", impl: emb_NumberObject_multiplyByInt, flags: METH_VARARGS, docs: "Multiplies the instance's wrapped long by the passed long."), PythonMethod(name: "multiply", impl: emb_NumberObject_multiply, flags: METH_VARARGS, docs: "Multiplies the receiver by the passed Number instance.")]
+        let numberMethodsDef = buildMethodsDefArray(numberMethArray)
+        return numberMethodsDef
+    }()
+    
+    public class func getPythonTypeDefinition() -> UnsafeMutablePointer<PyTypeObject> {
+        return pythonTypeDefinition
+    }
+    
+    public class func getPythonMethods() -> UnsafeMutablePointer<PyMethodDef> {
+        return pythonMethodsDefinition
+    }
+}
+
+extension Number : BridgeableToPython {
+    public func bridgeToPython() -> PythonBridge {
+        return PythonNumber(self)
+    }
+}
+
+public class PythonNumber : PythonObject, BridgeableFromPython {
+    public init(_ number: Number) {
+        let newPyObj = _PyObject_New(Number.getPythonTypeDefinition())
+        
+        newPyObj!.withMemoryRebound(to: pyswift_PyObjWrappingSwift.self, capacity: 1) {wrappingObjPtr in
+            wrappingObjPtr.pointee.wrapped_obj = bridgeRetained(obj: number)
+        }
+        super.init(ptr: newPyObj!)
+    }
+    
+    public required init(ptr: PythonObjectPointer?) {
+        super.init(ptr: ptr ?? PyNone_Get())
+        //check real python ob_type ?
+    }
+    
+    public typealias SwiftMatchingType = Number
+    public func typedBridgeFromPython() -> Number? {
+        guard !self.isNone else { return nil }
+        
+        let pySelf = UnsafeMutableRawPointer(self.pythonObjPtr!).bindMemory(to: pyswift_PyObjWrappingSwift.self, capacity: 1).pointee
+        let swSelf : Number = Unmanaged<Number>.fromOpaque(pySelf.wrapped_obj).takeRetainedValue()
+        
+        return swSelf
+    }
+}
+
+let emb_NumberType = Number.getPythonTypeDefinition()
+if (PyType_Ready(emb_NumberType) < 0) {
+    exit(1)
+}
+
+emb_NumberType.withMemoryRebound(to: PyObject.self, capacity: 1) {objectTypePtr in
+    Py_IncRef(objectTypePtr)
+    PyModule_AddObject(module.pythonObjPtr!, "Number", objectTypePtr)
+}
+
+PySwift.execute(code: "print('Test4', emb.Number)")
+PySwift.execute(code: "print('Test5', emb.Number(number=2).multiply(emb.Number(number=3)))")
+PySwift.execute(code: "print('Test6', emb.Number(number=2).multiply(emb.Number(number=3), \"this string has nothing to do here\"))")
+PySwift.execute(code: "print('Test7', emb.Number(number=2).multiplyByInt(3))")
+
+let numberInstance = Number(4)
+let numberInstanceBridged = numberInstance.bridgeToPython()
+let cocorico = numberInstanceBridged.call("multiply", args: Number(12).bridgeToPython())
+print(cocorico)
+
+PythonBridgingManager.sharedInstance.registerBridge(type: emb_NumberType, to: PythonNumber.self)
+
+guard let type = PythonBridgingManager.sharedInstance.getBridge(numberInstanceBridged.pythonObjPtr!) as? PythonBridge.Type
+    else { abort() }
+
+let pyBridge = type.init(ptr: numberInstanceBridged.pythonObjPtr!) as! UntypedBridgeableFromPython
+let swValue : Any? = pyBridge.bridgeFromPython()
+
+guard swValue! is Number else { assertionFailure("Dynamic bridging failed!") ; exit(1) }
+
