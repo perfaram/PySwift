@@ -235,6 +235,28 @@ extension PythonBridge {
         return PythonObject(ptr: pValue)
     }
     
+    @discardableResult public func call(positionalArgs: [PythonBridge], keywordArgs: Dictionary<String, PythonBridge>) -> PythonObject {
+        guard PyCallable_Check(self.pythonObjPtr) == 1 else { return PythonObject() }
+        
+        let pArgs = PyTuple_New(positionalArgs.count)
+        for (idx, obj) in positionalArgs.enumerated() {
+            let i:Int = idx
+            PyTuple_SetItem(pArgs, i, obj.pythonObjPtr!)
+        }
+        
+        let pKeywords = PyDict_New()
+        for (keyword, obj) in keywordArgs {
+            PyDict_SetItemString(pKeywords, keyword, obj.pythonObjPtr!)
+        }
+        
+        let pValue = PyObject_Call(self.pythonObjPtr, pArgs, pKeywords)
+        
+        Py_DecRef(pArgs)
+        Py_DecRef(pKeywords)
+        
+        return PythonObject(ptr: pValue)
+    }
+    
     @discardableResult public func call(_ funcName: String, args: PythonBridge...) -> PythonObject {
         return call(funcName, args:args)
     }
