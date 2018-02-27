@@ -16,3 +16,11 @@ PyObject*__nonnull PyTuple_Get_Item(PyObject*__nonnull seq, NSUInteger i) {
     return PyTuple_GET_ITEM(seq, i);
     //(((PyTupleObject *)(obj))->ob_item[i]); //PyTuple_GET_ITEM
 }
+
+PyObject*__nonnull PyBool_True() {
+    return Py_True;
+}
+
+PyObject*__nonnull PyBool_False() {
+    return Py_False;
+}
