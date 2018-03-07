@@ -44,7 +44,7 @@ public class PythonSwift {
         get { return pythonMain }
     }
     
-    public var None : PythonModule {
+    public var None : PythonNone {
         get { return pythonNone }
     }
     
@@ -167,7 +167,7 @@ public protocol BridgeableToPython {
 }
 
 public protocol UntypedBridgeableFromPython {
-    func bridgeFromPython() -> Any
+    func bridgeFromPython() -> Any?
 }
 
 public protocol BridgeableFromPython : UntypedBridgeableFromPython {
@@ -176,8 +176,8 @@ public protocol BridgeableFromPython : UntypedBridgeableFromPython {
 }
 
 extension BridgeableFromPython {
-    public func bridgeFromPython() -> Any {
-        return self.typedBridgeFromPython() as Any
+    public func bridgeFromPython() -> Any? {
+        return self.typedBridgeFromPython() as Any?
     }
 }
 
@@ -353,7 +353,36 @@ public func convertPythonObjectPointer(cPyObj ptr:PythonObjectPointer) -> Python
     return PythonObject(ptr:ptr)
 }
 
-open class PythonObject : PythonBridge, CustomDebugStringConvertible {
+open class PythonObject : PythonBridge, CustomDebugStringConvertible, Hashable//, UntypedBridgeableFromPython
+{
+    public var hashValue: Int {
+        get {
+            return PyObject_Hash(self.pythonObjPtr!)
+        }
+    }
+    
+    public static func ==(lhs: PythonObject, rhs: PythonObject) -> Bool {
+        let ret = PyObject_RichCompareBool(lhs.pythonObjPtr!, rhs.pythonObjPtr!, Py_EQ)
+        return (ret == 1)
+    }
+    
+    public static func !=(lhs: PythonObject, rhs: PythonObject) -> Bool {
+        let ret = PyObject_RichCompareBool(lhs.pythonObjPtr!, rhs.pythonObjPtr!, Py_NE)
+        return (ret == 1)
+    }
+    
+    /*public func bridgeFromPython() -> Any? {
+        guard let ptr = pythonObjPtr else { return nil }
+        
+        guard let type = PythonBridgingManager.sharedInstance.getBridge(ptr) as? PythonBridge.Type
+            else { return nil }
+        
+        let pyBridge = type.init(ptr: ptr) as! UntypedBridgeableFromPython
+        let swValue = pyBridge.bridgeFromPython()
+        
+        return swValue
+    }*/
+    
     public private(set) var pythonObjPtr: PythonObjectPointer?
     
     public init() {
