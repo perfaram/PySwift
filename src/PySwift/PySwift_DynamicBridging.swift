@@ -8,7 +8,10 @@ public class PythonBridgingManager {
         dict[getPointerToPythonObjectType(&PyInt_Type)] = (PythonInt.self)
         dict[getPointerToPythonObjectType(&PyFloat_Type)] = (PythonFloat.self)
         dict[getPointerToPythonObjectType(&PyString_Type)] = (PythonString.self)
+        dict[getPointerToPythonObjectType(&PyUnicode_Type)] = (PythonString.self)
         dict[getPointerToPythonObjectType(&PyList_Type)] = (PythonList.self)
+        dict[getPointerToPythonObjectType(&PyTuple_Type)] = (PythonList.self)
+        dict[getPointerToPythonObjectType(&PyDict_Type)] = (PythonDictionary.self)
         
         return dict
     }()
