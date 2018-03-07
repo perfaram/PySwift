@@ -24,6 +24,15 @@ public class PythonList : PythonObject, BridgeableFromPython, ExpressibleByArray
         }
     }
     
+    public convenience init(_ pythonUntypedObject: PythonObject) {
+        self.init(ptr: pythonUntypedObject.pythonObjPtr)
+    }
+    
+    @available(*, unavailable, message: "Use PythonDictionary for bridging dictionaries")
+    public required init(fromCollection collection: Dictionary<AnyHashable, Any>) {
+        fatalError()
+    }
+    
     public required init<C: Collection>(fromCollection collection: C) {
         super.init(ptr: PyList_New(0)) //because getting count on Collections is only guaranteed to be O(*n*)
         var iterator = collection.makeIterator()
@@ -53,9 +62,40 @@ public class PythonList : PythonObject, BridgeableFromPython, ExpressibleByArray
         super.init(ptr: pyObjPtr)
     }
     
-    public typealias SwiftMatchingType = Array<Any>
-    public func typedBridgeFromPython() -> Array<Any>? {
+    public typealias SwiftMatchingType = Array<Any?>
+    public func typedBridgeFromPython() -> Array<Any?>? {
         return __bridgeFromPython(self)
+    }
+    
+    public func shallowBridgeFromPython() -> Array<PythonObject>? {
+        guard !self.isNone else { return nil }
+        
+        var retArray = Array<PythonObject>()
+        
+        self.pythonObjPtr!.withMemoryRebound(to: PyObject.self, capacity: 1, { (pyobjPtr) -> Void in
+            let len : UInt
+            let seq = PySequence_Fast(pyobjPtr, "expected a sequence")
+            let size = PySequence_Size(pyobjPtr)
+            if (size < 0) {
+                print(PythonSwift.retrievePythonException())
+            }
+            len = UInt(size)
+            
+            if (PyList_CheckIsList(seq!)) {
+                for i in 0..<len {
+                    let item = PyList_Get_Item(seq!, i)
+                    retArray.append(PythonObject(ptr: item))
+                }
+            } else {
+                for i in 0..<len {
+                    let item = PyTuple_Get_Item(seq!, i)
+                    retArray.append(PythonObject(ptr: item))
+                }
+            }
+            Py_DecRef(seq);
+        })
+        
+        return retArray
     }
 }
 
@@ -63,7 +103,7 @@ public func __bridgeToPython<C: Collection>(_ coll: C) -> PythonList {
     return PythonList(fromCollection: coll)
 }
 
-public func __bridgeFromPython(_ list: PythonList) -> Array<Any>? {
+public func __bridgeFromPython(_ list: PythonList) -> Array<Any?>? {
     guard !list.isNone else { return nil }
     
     var retArray = Array<Any!>()
@@ -71,7 +111,11 @@ public func __bridgeFromPython(_ list: PythonList) -> Array<Any>? {
     list.pythonObjPtr!.withMemoryRebound(to: PyObject.self, capacity: 1, { (pyobjPtr) -> Void in
         let len : UInt
         let seq = PySequence_Fast(pyobjPtr, "expected a sequence")
-        len = UInt(PySequence_Size(pyobjPtr))
+        let size = PySequence_Size(pyobjPtr)
+        if (size < 0) {
+            print(PythonSwift.retrievePythonException())
+        }
+        len = UInt(size)
         
         if (PyList_CheckIsList(seq!)) {
             for i in 0..<len {
@@ -103,20 +147,9 @@ public func __bridgeFromPython(_ list: PythonList) -> Array<Any>? {
     return retArray
 }
 
-public func __bridgeElementsToPython(_ dict: Dictionary<String, BridgeableToPython>) -> Dictionary<String, PythonBridge> {
-    return dict.mapValues{ $0.bridgeToPython() }
-}
-
 public func __bridgeElementsToPython<C: Collection>(_ coll: C) -> [PythonBridge] where C.Iterator.Element : BridgeableToPython {
     return coll.map { (obj: BridgeableToPython) -> PythonBridge in
         obj.bridgeToPython()
-    }
-}
-
-public func __bridgeElementsToPython(_ dict: Dictionary<String, BridgeableToPython?>) -> Dictionary<String, PythonBridge> {
-    return dict.mapValues{
-        guard let value = $0 else { return PythonNone() }
-        return value.bridgeToPython()
     }
 }
 
@@ -130,15 +163,5 @@ public func __bridgeElementsToPython<C: Collection>(_ coll: C) -> [PythonBridge]
 public extension Collection /*: BridgeableToPython*/ {
     func bridgeToPython() -> PythonBridge {
         return PythonList(fromCollection: self)
-    }
-}
-
-extension Dictionary {
-    func mapValues<T>(_ transform: (Value)->T) -> Dictionary<Key,T> {
-        var resultDict = [Key: T]()
-        for (k, v) in self {
-            resultDict[k] = transform(v)
-        }
-        return resultDict
     }
 }
