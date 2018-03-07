@@ -88,7 +88,7 @@ public func __bridgeToPython(_ dict: [AnyHashable : Any?]) -> PythonDictionary {
 public func __bridgeFromPython(_ dict: PythonDictionary) -> [AnyHashable : Any?]? {
     guard !dict.isNone else { return nil }
     
-    var retDict = dict.pythonObjPtr!.withMemoryRebound(to: PyObject.self, capacity: 1, { (pyobjPtr) -> [AnyHashable : Any?]? in
+    let retDict = dict.pythonObjPtr!.withMemoryRebound(to: PyObject.self, capacity: 1, { (pyobjPtr) -> [AnyHashable : Any?]? in
         guard PyDict_CheckIsDict(pyobjPtr) else { return nil }
         
         var retDict = [AnyHashable : Any?]()

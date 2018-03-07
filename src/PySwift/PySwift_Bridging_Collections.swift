@@ -77,7 +77,7 @@ public class PythonList : PythonObject, BridgeableFromPython, ExpressibleByArray
             let seq = PySequence_Fast(pyobjPtr, "expected a sequence")
             let size = PySequence_Size(pyobjPtr)
             if (size < 0) {
-                print(PythonSwift.retrievePythonException())
+                print(PythonSwift.retrievePythonException() as Any)
             }
             len = UInt(size)
             
@@ -113,7 +113,7 @@ public func __bridgeFromPython(_ list: PythonList) -> Array<Any?>? {
         let seq = PySequence_Fast(pyobjPtr, "expected a sequence")
         let size = PySequence_Size(pyobjPtr)
         if (size < 0) {
-            print(PythonSwift.retrievePythonException())
+            print(PythonSwift.retrievePythonException() as Any)
         }
         len = UInt(size)
         

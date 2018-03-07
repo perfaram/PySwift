@@ -29,8 +29,7 @@ public class PythonString : PythonObject, BridgeableFromPython, ExpressibleByStr
     public func typedBridgeFromPython() -> String? {
         guard !self.isNone else { return nil }
         
-        return PyStringOrUnicode_Get_UTF8Buffer(self.pythonObjPtr!) as? String
-        //return String(cString: PyString_AsString(self.pythonObjPtr))
+        return PyStringOrUnicode_Get_UTF8Buffer(self.pythonObjPtr!)
     }
 }
 
