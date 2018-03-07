@@ -216,7 +216,7 @@ let multiply_trampoline : PyCFunction = {(rawSelf, args) -> PythonObjectPointer?
     var firstArg: Int64 = 0
     var secondArg: Int64 = 0
     
-    guard let pySelf : PythonObject = parseSelfAndArgs(rawSelf, args, "LL", &firstArg, &secondArg)
+    guard let _ : PythonObject = parseSelfAndArgs(rawSelf, args, "LL", &firstArg, &secondArg)
         else { return nil }
     
     let f : Int64 = multiply(firstArg, byInt: secondArg)
@@ -226,7 +226,7 @@ let multiply_trampoline : PyCFunction = {(rawSelf, args) -> PythonObjectPointer?
 let describeListAsSwiftArray : PyCFunction = {(rawSelf, args) -> PythonObjectPointer? in
     var listArg: UnsafeMutablePointer<PyListObject> = prepareFor(PyListObject.self)
     
-    guard let pySelf : PythonList = parseSelfAndArgs(rawSelf, args, "O", &listArg)
+    guard let _ : PythonList = parseSelfAndArgs(rawSelf, args, "O", &listArg)
         else { return nil }
     //theoretically, returning nil without setting the Python exception (thru `PythonSwift.setPythonException`) should not be done, because then Python errors with "error return without exception set"
     //however, it is here deemed acceptable because if `parseSelfAndArgs` returns nil, it means that it has detected an error, and if it has done so, it has already set the Python exception
