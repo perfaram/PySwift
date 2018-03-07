@@ -62,9 +62,17 @@ NSString*__nonnull PyStringOrUnicode_Get_UTF8Buffer(PyObject*__nonnull string) {
     return ret;
 }
 
-PyObject*__nonnull PyErr_GetObject() {
+PyObject*__nullable PyErr_GetObject() {
+    PyObject* errOccurred = PyErr_Occurred();
+    if (errOccurred == NULL)
+        return nil;
     PyThreadState *tstate = PyThreadState_GET();
     PyObject *value = tstate->curexc_value;
+    
+    if (!PyExceptionInstance_Check(value))
+        return nil;
+    
+    value = ((PyBaseExceptionObject*)value)->args;
     Py_XINCREF(value);
-    return ((PyBaseExceptionObject*)value)->args;
+    return value;
 }

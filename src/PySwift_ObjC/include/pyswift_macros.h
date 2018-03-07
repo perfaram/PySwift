@@ -20,4 +20,4 @@ PyObject*__nonnull PyBool_False();
 
 NSString*__nonnull PyStringOrUnicode_Get_UTF8Buffer(PyObject*__nonnull uniObj);
 
-PyObject*__nonnull PyErr_GetObject();
+PyObject*__nullable PyErr_GetObject();
