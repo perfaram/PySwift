@@ -2,7 +2,7 @@ import Python
 import PySwift_ObjC
 
 public enum PySwiftError : Error, CustomStringConvertible {
-    case InterpreterError(error: (message: String, column: Int, line: Int))
+    case InterpreterError(error: (message: String, column: Int, line: Int, arguments: [PythonObject]))
     case UnexpectedTypeError(expected: Any.Type, got: Any.Type)
     case UnexpectedNone()
     
@@ -122,10 +122,16 @@ public class PythonSwift {
         PyErr_SetString(PyExc_RuntimeError, errorString)
     }
     
+    public class func clearPythonException() {
+        PyErr_Clear();
+    }
+    
     public class func retrievePythonException() -> PySwiftError? {
         if (PyErr_Occurred() == nil) {
             return nil
         }
+        
+        let swValue = PythonList(ptr: PyErr_GetObject()).shallowBridgeFromPython() ?? []
         
         var exceptionType: UnsafeMutablePointer<PyObject>? = prepareFor(PyObject.self)
         var exceptionValue: UnsafeMutablePointer<PyObject>? = prepareFor(PyObject.self)
@@ -154,7 +160,10 @@ public class PythonSwift {
         
         let swMsg = String(cString: PyString_AsString(PyObject_Str(exceptionValue)))
         
-        let error = PySwiftError.InterpreterError(error: (message: swMsg, column: swCol, line: swLine))
+        let error = PySwiftError.InterpreterError(error: (message: swMsg,
+                                                          column: swCol,
+                                                          line: swLine,
+                                                          arguments: swValue))
         
         PyErr_Clear();
         
