@@ -1,7 +1,7 @@
 import Python
 import PySwift_ObjC
 
-public class PythonNone : PythonObject, UntypedBridgeableFromPython, ExpressibleByNilLiteral {
+public class PythonNone : PythonObject, ExpressibleByNilLiteral {
     
     public required init(nilLiteral: ()) {
         super.init(ptr: PyNone_Get())
@@ -15,7 +15,7 @@ public class PythonNone : PythonObject, UntypedBridgeableFromPython, Expressible
         super.init(ptr: ptr ?? PyNone_Get())
     }
     
-    public func bridgeFromPython() -> Any {
+    public func bridgeFromPython() -> Any? {
         return Optional<Any>.none as Any
     }
 }
