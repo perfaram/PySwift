@@ -1,3 +1,6 @@
+> _**This repo has been ARCHIVED.
+> Please see https://github.com/pvieito/PythonKit for a newer, better way to interoperate between Swift and Python**_
+
 # Swiftpy : embedding Python in Swift
 
 ## Requirements
